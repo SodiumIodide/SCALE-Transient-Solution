@@ -7,7 +7,7 @@ By Corey Skinner.
 
 Dependencies:
 re for regular expression pattern matching in output files
-os for calling the batch6.1 process via command interface
+os for calling the batch6.1 process via command interface, file existence for debug
 numpy for arrays and mathematical methods
 '''
 
@@ -30,7 +30,6 @@ def set_materials(elems, ndens, tot_height, tot_radius, **kwargs):
         h_list = []  # Second dimension empty list for appending
         for radius in calc_radii(tot_radius):
             if 'temp' in kwargs:
-                print(kwargs['temp'])
                 temperature = kwargs['temp'][mat_counter - 1]
                 h_list.append(Material(mat_counter, elems, ndens, height,
                                        base_height, radius, temperature))
@@ -83,7 +82,7 @@ def main():
     materials = set_materials(elems, ndens, tot_height, tot_radius)
     print("Running preliminary file, to determine masses, volumes, etc...")
     timer = 0 #s
-    fo.write_file(filename, materials, tot_height, initial=True)
+    fo.write_file(filename, materials, tot_height, volcalc=True)
     outfilename = filename.replace("inp", "out")
     if not path.isfile(outfilename):
         system("batch6.1 {}".format(filename))
@@ -124,7 +123,8 @@ def main():
         filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
                    re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
                    ".inp"
-        fo.write_file(filename, materials, tot_height)
+        # Allow SCALE to calculate volumes to account for increasing mass
+        fo.write_file(filename, materials, tot_height, volcalc=True)
         system("batch6.1 {}".format(filename))
         outfilename = filename.replace("inp", "out")
         volumes = fo.get_volumes(outfilename)  # cm^3

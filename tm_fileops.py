@@ -68,7 +68,7 @@ def get_volumes(filename):
                         volumes[int(matches[0][0]) - 1] = float(matches[0][1])  # cm^3
     return volumes  # [cm^3]
 
-def write_file(filename, materials, tot_height, initial=False):
+def write_file(filename, materials, tot_height, volcalc=False):
     '''Function to create the series of input files'''
     with open(filename, mode='w') as fhan:
         fhan.write("'Input generated for SCALE 6.1 by TransientModel.py\n")
