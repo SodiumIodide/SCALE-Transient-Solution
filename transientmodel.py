@@ -44,6 +44,7 @@ def propagate_neutrons(k_eff, lifetime, neutrons):
     '''Propagate the number of neutrons over delta-t'''
     return neutrons * np.exp((k_eff - 1)/lifetime * c.DELTA_T)
 
+# This function is largely present for refactoring purposes
 def increase_height(height, incr):
     '''Return an incremented height'''
     return height + incr  # cm
@@ -70,7 +71,7 @@ def main():
     filename = input(">>> ")
     if not filename.endswith(".inp"):
         filename += ".inp"
-    if len(filename) < 1:
+    if not filename.strip():
         print("Must include a filename...")
         raise ValueError
     tot_height = c.INIT_HEIGHT  # cm
@@ -117,7 +118,7 @@ def main():
         fissions = [frac * total_neutrons / nubar for frac in fission_profile]
         total_fissions = sum(fissions)
         # Increase total height, requires creating new material information
-        tot_height = increase_height(tot_height, 1)  # cm
+        tot_height = increase_height(tot_height, 0.2)  # cm
         # Re-apply materials with incresed height
         # (Adding material to system, maintaining even dimension split)
         materials = set_materials(elems, ndens, tot_height, tot_radius, temp=temperatures)
@@ -160,7 +161,7 @@ def main():
         fissions = [frac * total_neutrons / nubar for frac in fission_profile]
         total_fissions = sum(fissions)
         # Increase the top layer, no longer creating new material information
-        tot_height = increase_height(tot_height, 3)  # cm
+        tot_height = increase_height(tot_height, 1.5)  # cm
         for ind, material_layer in enumerate(materials):
             if ind == c.NUM_AXIAL - 1:
                 for material in material_layer:

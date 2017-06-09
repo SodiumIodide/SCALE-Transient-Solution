@@ -91,7 +91,13 @@ def write_file(filename, materials, tot_height, volcalc=False):
         fhan.write("      end zone\n")
         fhan.write("end celldata\n")
         fhan.write("read parameter\n")
-        fhan.write(" res=203\n")
+        # A restart file is not necessary, but the number of material interfaces
+        # affects the results of k-eff from boundary calculation residuals
+        # (i.e. a solid cylinder will produce a different numerical value than
+        # a cylinder broken into three or nine material segments)
+        # An attempted alleviation is included by increasing the standard number
+        # of calculational generations from 203
+        fhan.write(" gen=406\n")
         fhan.write(" htm=no\n")
         fhan.write(" wrs=35\n")
         fhan.write("end parameter\n")
