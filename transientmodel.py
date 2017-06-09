@@ -50,13 +50,13 @@ def increase_height(height, incr):
     return height + incr  # cm
 
 def calc_heights(tot_height):
-    '''Returns a tuple of the ranges of height based on total'''
+    '''Returns a list of the ranges of height based on total'''
     height_diff = tot_height / c.NUM_AXIAL  # cm
     heights = list(map(lambda ind: ind * height_diff, range(1, c.NUM_AXIAL + 1)))  # cm
     return heights  # cm
 
 def calc_radii(tot_rad):
-    '''Returns a tuple of the ranges of radii based on total'''
+    '''Returns a list of the ranges of radii based on total'''
     rad_diff = tot_rad / c.NUM_RADIAL  # cm
     radii = list(map(lambda ind: ind * rad_diff, range(1, c.NUM_RADIAL + 1)))  # cm
     return radii  # cm
