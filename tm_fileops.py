@@ -43,7 +43,7 @@ def get_transient(filename):
             if "best estimate system k-eff" in line:
                 matches = re.findall(kepat, line)
                 keff = float(matches[0][0])
-                maxkeff = keff + 2 * float(matches[0][1])
+                maxkeff = round(keff + 2 * float(matches[0][1]), 5)
             if "system nu bar" in line:
                 matches = re.findall(nbpat, line)
                 nubar = float(matches[0])  # n/fis
@@ -104,7 +104,7 @@ def write_file(filename, materials, tot_height, volcalc=False):
                 fhan.write(material.geometry_string())
         # Encasing geometry for boundary
         fhan.write(" cylinder {0}       {1}       {2}       -1\n"
-                   .format(c.NUM_MATERIALS + 1, c.RAD + 1, tot_height + 2))
+                   .format(c.NUM_MATERIALS + 1, c.RAD + 1, tot_height + 1))
         # Materials and media
         for material_level in materials:
             for ind, material in enumerate(material_level):
@@ -121,7 +121,7 @@ def write_file(filename, materials, tot_height, volcalc=False):
         fhan.write("\n")
         fhan.write(" boundary {}\n".format(c.NUM_MATERIALS + 1))
         fhan.write("end geometry\n")
-        if initial:
+        if volcalc:
             fhan.write("read volume\n")
             fhan.write("  type=trace\n")
             fhan.write("end volume\n")

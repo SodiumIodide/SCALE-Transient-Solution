@@ -44,9 +44,9 @@ def propagate_neutrons(k_eff, lifetime, neutrons):
     '''Propagate the number of neutrons over delta-t'''
     return neutrons * np.exp((k_eff - 1)/lifetime * c.DELTA_T)
 
-def increase_height(height):
+def increase_height(height, incr):
     '''Return an incremented height'''
-    return height + 1  # cm
+    return height + incr  # cm
 
 def calc_heights(tot_height):
     '''Returns a tuple of the ranges of height based on total'''
@@ -109,14 +109,15 @@ def main():
     print("Beginning main calculation...")
     while keff < 1.01:
         # Proceed in time
-        timer += c.DELTA_T
-        # Read output file for information and calculate new changes
+        timer += c.DELTA_T  # s
+        # Read previous output file for information and calculate new changes
         fission_profile = fo.count_fissions(outfilename)
         total_neutrons = propagate_neutrons(keff, lifetime, total_neutrons)
         # Correlation between flux profile and fission density
         fissions = [frac * total_neutrons / nubar for frac in fission_profile]
         total_fissions = sum(fissions)
-        tot_height = increase_height(tot_height)  # Increase height
+        # Increase total height, requires creating new material information
+        tot_height = increase_height(tot_height, 1)  # cm
         # Re-apply materials with incresed height
         # (Adding material to system, maintaining even dimension split)
         materials = set_materials(elems, ndens, tot_height, tot_radius, temp=temperatures)
@@ -135,6 +136,47 @@ def main():
         for material_layer in materials:
             for material in material_layer:
                 material.append_volume_mass_init(volumes[counter], masses[counter])
+                material.calc_temp(fissions[counter])
+                temperatures.append(material.temp)  # K
+                counter += 1
+        maxtemp = max(temperatures)
+        fo.record(timer, total_fissions, maxtemp, lifetime, keff, keffmax)
+        print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
+        print("Current k-eff: {}".format(keff))
+        print("Maximum k-eff: {}".format(keffmax))
+        print("Number of fissions: {0:E}".format(sum(fissions)))
+        print("Maximum temperature: {}".format(maxtemp))
+    # Upper layer expansion loop
+    print("Finished adding material. Now expanding top layer...")
+    with open("results.txt", 'a') as appfile:
+        appfile.write("# Beginning top layer expansion #\n")
+    while keff > 1.0:
+        # Proceed in time
+        timer += c.DELTA_T  # s
+        # Read previous output file for information and calculate new changes
+        fission_profile = fo.count_fissions(outfilename)
+        total_neutrons = propagate_neutrons(keff, lifetime, total_neutrons)
+        # Correlation between flux profile and fission density
+        fissions = [frac * total_neutrons / nubar for frac in fission_profile]
+        total_fissions = sum(fissions)
+        # Increase the top layer, no longer creating new material information
+        tot_height = increase_height(tot_height, 3)  # cm
+        for ind, material_layer in enumerate(materials):
+            if ind == c.NUM_AXIAL - 1:
+                for material in material_layer:
+                    material.append_height(tot_height)
+        filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
+                   re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
+                   ".inp"
+        # Do not need to recalculate masses (thus volumes) for materials at this stage
+        fo.write_file(filename, materials, tot_height)
+        system("batch6.1 {}".format(filename))
+        outfilename = filename.replace("inp", "out")
+        lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
+        temperatures = []  # K, reset of list
+        counter = 0  # Two dimensional loops prevent use of enumerate()
+        for material_layer in materials:
+            for material in material_layer:
                 material.calc_temp(fissions[counter])
                 temperatures.append(material.temp)  # K
                 counter += 1
