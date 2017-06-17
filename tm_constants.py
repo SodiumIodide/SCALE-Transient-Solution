@@ -4,9 +4,7 @@ Import only module. Contains constants for the Python calculations.
 
 TIMESTEP_MAGNITUDE = -3
 DELTA_T = 10**TIMESTEP_MAGNITUDE  # s
-INIT_NEUTRONS = 1e10  # Small initiating fission accident source -> Flux build-up
-SPEC_HEAT = 0.82 * 4186  # J/g-C
-DENS = 1.162  # g/cm^3
+INIT_NEUTRONS = 1e16  # Small initiating fission accident source -> Flux build-up
 INIT_HEIGHT = 53  # cm
 RAD = 15  # cm
 NUM_AXIAL = 4

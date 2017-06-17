@@ -52,7 +52,7 @@ def get_transient(filename):
 def get_volumes(filename):
     '''Read an output file to determine the material volumes'''
     pat = re.compile(r'\s+\d?\s*\d?\s*\d+\s+(\d+)\s+(\S+)')
-    volumes = [0] * c.NUM_MATERIALS
+    volumes = [0.0] * c.NUM_MATERIALS
     with open(filename, mode='r') as ofile:
         found = False
         for line in ofile:
@@ -67,6 +67,25 @@ def get_volumes(filename):
                     if int(matches[0][0]) != 0:
                         volumes[int(matches[0][0]) - 1] = float(matches[0][1])  # cm^3
     return volumes  # [cm^3]
+
+def get_masses(filename):
+    '''Read an output file to determine the material density'''
+    pat = re.compile(r'\s+(\d+)\s+\S+\s\+/-\s\S+\s+(\S+)')
+    masses = [0.0] * c.NUM_MATERIALS
+    with open(filename, mode='r') as ofile:
+        found = False
+        for line in ofile:
+            if not found:
+                if "total mixture volume" in line and "total mixture mass" in line:
+                    found = True
+            else:
+                if "biasing information" in line:
+                    found = False
+                if re.match(pat, line):
+                    matches = re.findall(pat, line)
+                    masses[int(matches[0][0]) - 1] = float(matches[0][1])
+    return masses
+
 
 def write_file(filename, materials, tot_height, volcalc=False):
     '''Function to create the series of input files'''

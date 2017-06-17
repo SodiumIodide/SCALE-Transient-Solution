@@ -9,6 +9,8 @@ Dependencies:
 re for regular expression pattern matching in output files
 os for calling the batch6.1 process via command interface, file existence for debug
 numpy for arrays and mathematical methods
+coolprop for water properties (assuming aqueous mixture is approximated by water)
+    - Imported in module file "tm_material"
 '''
 
 # External
@@ -17,7 +19,7 @@ from os import system, path
 import numpy as np
 
 # Shared
-from tm_material import Material
+from tm_material import Material  # Requires CoolProp
 import tm_constants as c
 import tm_fileops as fo
 
@@ -88,7 +90,7 @@ def main():
     if not path.isfile(outfilename):
         system("batch6.1 {}".format(filename))
     volumes = fo.get_volumes(outfilename)  # cm^3
-    masses = [vol * c.DENS for vol in volumes]  # g
+    masses = fo.get_masses(outfilename)  # g
     counter = 0  # Two dimensional loops prevent use of enumerate()
     temperatures = []  # K
     for material_layer in materials:
@@ -103,7 +105,7 @@ def main():
     total_fissions = total_neutrons / nubar
     # Start results file
     with open("results.txt", 'w') as resfile:
-        resfile.write("Time (s), Total Fissions, Max Temperature, " + \
+        resfile.write("Time (s), Number of Fissions, Max Temperature, " + \
                       "Neutron Lifetime (s), k-eff, k-eff+2sigma\n")
     fo.record(timer, total_fissions, maxtemp, lifetime, keff, keffmax)
     # Material addition loop
@@ -130,7 +132,7 @@ def main():
         system("batch6.1 {}".format(filename))
         outfilename = filename.replace("inp", "out")
         volumes = fo.get_volumes(outfilename)  # cm^3
-        masses = [vol * c.DENS for vol in volumes]  # g
+        masses = fo.get_masses(outfilename)  # g
         lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
         temperatures = []  # K, reset of list
         counter = 0  # Two dimensional loops prevent use of enumerate()
@@ -147,10 +149,15 @@ def main():
         print("Maximum k-eff: {}".format(keffmax))
         print("Number of fissions: {0:E}".format(sum(fissions)))
         print("Maximum temperature: {}".format(maxtemp))
-    # Upper layer expansion loop
-    print("Finished adding material. Now expanding top layer...")
+    # Material expansion loop
+    print("Finished adding material. Now expanding system by temperature...")
+    # Store heights in two-dimensional matrix
+    heights = np.zeros([c.NUM_AXIAL, c.NUM_RADIAL])
+    for ax_ind, material_layer in enumerate(materials):
+        for rad_ind, material in enumerate(material_layer):
+            heights[ax_ind, rad_ind] = material.height
     with open("results.txt", 'a') as appfile:
-        appfile.write("# Beginning top layer expansion #\n")
+        appfile.write("# Expanding material #\n")
     while keff > 1.0:
         # Proceed in time
         timer += c.DELTA_T  # s
@@ -160,12 +167,16 @@ def main():
         # Correlation between flux profile and fission density
         fissions = [frac * total_neutrons / nubar for frac in fission_profile]
         total_fissions = sum(fissions)
-        # Increase the top layer, no longer creating new material information
-        tot_height = increase_height(tot_height, 1.5)  # cm
-        for ind, material_layer in enumerate(materials):
-            if ind == c.NUM_AXIAL - 1:
-                for material in material_layer:
-                    material.append_height(tot_height)
+        # Update stored height matrix to current material data
+        for ax_ind, material_layer in enumerate(materials):
+            for rad_ind, material in enumerate(material_layer):
+                heights[ax_ind, rad_ind] = material.height
+        # Begin total expansion of material
+        for ax_ind, material_layer in enumerate(materials):
+            for rad_ind, material in enumerate(material_layer):
+                if ax_ind != 0:
+                    material.base_height = heights[ax_ind - 1, rad_ind]
+                material.expand()
         filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
                    re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
                    ".inp"
