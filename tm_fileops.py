@@ -134,15 +134,17 @@ def write_file(filename, materials, tot_height, volcalc=False):
         for material_level in materials:
             for ind, material in enumerate(material_level):
                 fhan.write(" media {0} 1 {0}".format(material.matnum))
-                if ind != 0:
-                    fhan.write(" -{}\n".format(material.matnum - 1))
-                else:
-                    fhan.write("\n")
+                # A little bit overkill, but necessary for changing height values
+                for material_level_sub in materials:
+                    for material_sub in material_level_sub:
+                        if material_sub.radius < material.radius:
+                            fhan.write(" -{} ".format(material_sub.matnum))
+                fhan.write("\n")
         fhan.write(" media 0 {}".format(c.NUM_MATERIALS + 1))
         # Void material in encasing geometry
+        # A little bit overkill, but necessary for changing height values
         for num in range(1, c.NUM_MATERIALS + 1):
-            if num % c.NUM_RADIAL == 0:
-                fhan.write(" -{}".format(num))
+            fhan.write(" -{}".format(num))
         fhan.write("\n")
         fhan.write(" boundary {}\n".format(c.NUM_MATERIALS + 1))
         fhan.write("end geometry\n")

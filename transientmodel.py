@@ -110,52 +110,52 @@ def main():
     fo.record(timer, total_fissions, maxtemp, lifetime, keff, keffmax)
     # Material addition loop
     print("Beginning main calculation...")
-    while keff < 1.01:
-        # Proceed in time
-        timer += c.DELTA_T  # s
-        # Read previous output file for information and calculate new changes
-        fission_profile = fo.count_fissions(outfilename)
-        total_neutrons = propagate_neutrons(keff, lifetime, total_neutrons)
-        # Correlation between flux profile and fission density
-        fissions = [frac * total_neutrons / nubar for frac in fission_profile]
-        total_fissions = sum(fissions)
-        # Increase total height, requires creating new material information
-        tot_height = increase_height(tot_height, 0.2)  # cm
-        # Re-apply materials with incresed height
-        # (Adding material to system, maintaining even dimension split)
-        materials = set_materials(elems, ndens, tot_height, tot_radius, temp=temperatures)
-        filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
-                   re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
-                   ".inp"
-        # Allow SCALE to calculate volumes to account for increasing mass
-        fo.write_file(filename, materials, tot_height, volcalc=True)
-        system("batch6.1 {}".format(filename))
-        outfilename = filename.replace("inp", "out")
-        volumes = fo.get_volumes(outfilename)  # cm^3
-        masses = fo.get_masses(outfilename)  # g
-        lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
-        temperatures = []  # K, reset of list
-        counter = 0  # Two dimensional loops prevent use of enumerate()
-        for material_layer in materials:
-            for material in material_layer:
-                material.append_volume_mass_init(volumes[counter], masses[counter])
-                material.calc_temp(fissions[counter])
-                temperatures.append(material.temp)  # K
-                counter += 1
-        maxtemp = max(temperatures)
-        fo.record(timer, total_fissions, maxtemp, lifetime, keff, keffmax)
-        print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
-        print("Current k-eff: {}".format(keff))
-        print("Maximum k-eff: {}".format(keffmax))
-        print("Number of fissions: {0:E}".format(sum(fissions)))
-        print("Maximum temperature: {}".format(maxtemp))
-    # Material expansion loop
-    print("Finished adding material. Now expanding system by temperature...")
+    # while keff < 1.01:
+    #     # Proceed in time
+    #     timer += c.DELTA_T  # s
+    #     # Read previous output file for information and calculate new changes
+    #     fission_profile = fo.count_fissions(outfilename)
+    #     total_neutrons = propagate_neutrons(keff, lifetime, total_neutrons)
+    #     # Correlation between flux profile and fission density
+    #     fissions = [frac * total_neutrons / nubar for frac in fission_profile]
+    #     total_fissions = sum(fissions)
+    #     # Increase total height, requires creating new material information
+    #     tot_height = increase_height(tot_height, 0.2)  # cm
+    #     # Re-apply materials with incresed height
+    #     # (Adding material to system, maintaining even dimension split)
+    #     materials = set_materials(elems, ndens, tot_height, tot_radius, temp=temperatures)
+    #     filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
+    #                re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
+    #                ".inp"
+    #     # Allow SCALE to calculate volumes to account for increasing mass
+    #     fo.write_file(filename, materials, tot_height, volcalc=True)
+    #     system("batch6.1 {}".format(filename))
+    #     outfilename = filename.replace("inp", "out")
+    #     volumes = fo.get_volumes(outfilename)  # cm^3
+    #     masses = fo.get_masses(outfilename)  # g
+    #     lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
+    #     temperatures = []  # K, reset of list
+    #     counter = 0  # Two dimensional loops prevent use of enumerate()
+    #     for material_layer in materials:
+    #         for material in material_layer:
+    #             material.append_volume_mass_init(volumes[counter], masses[counter])
+    #             material.calc_temp(fissions[counter])
+    #             temperatures.append(material.temp)  # K
+    #             counter += 1
+    #     maxtemp = max(temperatures)
+    #     fo.record(timer, total_fissions, maxtemp, lifetime, keff, keffmax)
+    #     print("Current time: {} s".format(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1)))
+    #     print("Current k-eff: {}".format(keff))
+    #     print("Maximum k-eff: {}".format(keffmax))
+    #     print("Number of fissions: {0:E}".format(sum(fissions)))
+    #     print("Maximum temperature: {}".format(maxtemp))
+    # # Material expansion loop
+    # print("Finished adding material. Now expanding system by temperature...")
     # Store heights in two-dimensional matrix
     heights = np.zeros([c.NUM_AXIAL, c.NUM_RADIAL])
-    for ax_ind, material_layer in enumerate(materials):
-        for rad_ind, material in enumerate(material_layer):
-            heights[ax_ind, rad_ind] = material.height
+    # for ax_ind, material_layer in enumerate(materials):
+    #     for rad_ind, material in enumerate(material_layer):
+    #         heights[ax_ind, rad_ind] = material.height
     with open("results.txt", 'a') as appfile:
         appfile.write("# Expanding material #\n")
     while keff > 1.0:
@@ -167,21 +167,23 @@ def main():
         # Correlation between flux profile and fission density
         fissions = [frac * total_neutrons / nubar for frac in fission_profile]
         total_fissions = sum(fissions)
-        # Update stored height matrix to current material data
-        for ax_ind, material_layer in enumerate(materials):
-            for rad_ind, material in enumerate(material_layer):
-                heights[ax_ind, rad_ind] = material.height
         # Begin total expansion of material
         for ax_ind, material_layer in enumerate(materials):
             for rad_ind, material in enumerate(material_layer):
                 if ax_ind != 0:
+                    height_shift = heights[ax_ind - 1, rad_ind] - material.base_height
                     material.base_height = heights[ax_ind - 1, rad_ind]
+                    material.height += height_shift
                 material.expand()
+                heights[ax_ind, rad_ind] = material.height
+                # Keep checks on total height such that void data doesn't get overwritten
+                if tot_height < material.height:
+                    tot_height = material.height
         filename = re.sub(r'\d', r'', filename.strip(".inp")) + \
                    re.sub(r'\.', r'', str(round(timer, abs(c.TIMESTEP_MAGNITUDE) + 1))) + \
                    ".inp"
         # Do not need to recalculate masses (thus volumes) for materials at this stage
-        fo.write_file(filename, materials, tot_height)
+        fo.write_file(filename, materials, tot_height, volcalc=True)
         system("batch6.1 {}".format(filename))
         outfilename = filename.replace("inp", "out")
         lifetime, keff, keffmax, nubar = fo.get_transient(outfilename)
