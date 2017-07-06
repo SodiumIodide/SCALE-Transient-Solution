@@ -149,15 +149,15 @@ def main():
     #     print("Maximum k-eff: {}".format(keffmax))
     #     print("Number of fissions: {0:E}".format(sum(fissions)))
     #     print("Maximum temperature: {}".format(maxtemp))
-    # # Material expansion loop
+    # Material expansion loop
     # print("Finished adding material. Now expanding system by temperature...")
     # Store heights in two-dimensional matrix
     heights = np.zeros([c.NUM_AXIAL, c.NUM_RADIAL])
-    # for ax_ind, material_layer in enumerate(materials):
-    #     for rad_ind, material in enumerate(material_layer):
-    #         heights[ax_ind, rad_ind] = material.height
-    with open("results.txt", 'a') as appfile:
-        appfile.write("# Expanding material #\n")
+    for ax_ind, material_layer in enumerate(materials):
+        for rad_ind, material in enumerate(material_layer):
+            heights[ax_ind, rad_ind] = material.height
+    # with open("results.txt", 'a') as appfile:
+        # appfile.write("# Expanding material #\n")
     while keff > 1.0:
         # Proceed in time
         timer += c.DELTA_T  # s
