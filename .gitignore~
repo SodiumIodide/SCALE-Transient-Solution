@@ -1,9 +1,0 @@
-.gitignore
-*.txt
-*.inp
-*.out
-*.msg
-*.path
-applet_resources
-__pycache__
-versions
